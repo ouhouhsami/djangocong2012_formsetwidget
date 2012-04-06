@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <section>
+        <form class="well form-search">
+            <input type="text" class="input-medium search-query">
+            <button type="submit" class="btn">Create a new map</button>
+        </form>
+	</section>
+    <section>
+    <table class="unstyled">
+    {% for item in object_list %}
+        <tr>
+			<td>
+				
+				<a href="{% url read item.slug %}">
+					<span class="badge badge-info">{{ item.place_set.all|length }}</span>
+					{{ item.label|title }}
+				</a>
+			</td>
+			<td>
+				<a class="btn btn-small" href="{% url edit item.slug %}">edit</a>
+			</td>
+		</tr>
+    {% endfor %}
+    </table>
+    </section>
+{% endblock content %}

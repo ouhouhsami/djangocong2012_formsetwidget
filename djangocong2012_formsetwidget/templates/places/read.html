@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block extra-js %}
+	<script src="//maps.googleapis.com/maps/api/js?sensor=false&libraries=drawing" type="text/javascript"></script>
+	<script type="text/javascript">             
+		var map;
+		$(document).ready(function() {
+			var myOptions = {
+				zoom: 8,
+				center: new google.maps.LatLng(-34.397, 150.644),
+				mapTypeId: google.maps.MapTypeId.ROADMAP,
+				streetViewControl:false,
+				mapTypeControl:false
+			};
+			map = new google.maps.Map(document.getElementById('map_canvas'), myOptions); 
+			{% for place in place_type.place_set.all %}
+				var marker_position = "{{ place.position }}";
+				// TODO: regex for getting lat and lng
+				marker_position = marker_position.replace('(', '').replace(')', '').replace(' ', '').split(',');
+				var lat = parseFloat(marker_position[0]);
+				var lng = parseFloat(marker_position[1]);
+				var marker_{{ place.id }} = new google.maps.Marker({
+					position: new google.maps.LatLng(lat,lng),
+					map: map,
+					title:"{{ place.title }}",
+					draggable: true,
+					id:"{{ place.id }}",
+					icon:"{{ STATIC_URL}}img/red-dot.png"
+				});
+				google.maps.event.addListener(marker_{{ place.id }}, 'click', function() {
+					var infowindow = new google.maps.InfoWindow({
+						content: '{{ place.comment|escapejs }}'
+					}); 
+					infowindow.open(map,marker_{{ place.id }});
+				})
+			{% endfor %}
+		})
+	</script>
+{% endblock %}
+
+{% block content %}
+	<div class="row">
+		<div class="span11">
+			<h1>{{ place_type.label }}</h1>
+		</div>
+		<div class="span1">
+			<a href="{% url edit place_type.slug %}" class="btn btn-primary">Edit</a>
+		</div>
+	</div>
+	<br />
+	<div id="map_canvas" style="width:100%; height:400px"></div>
+
+{% endblock content %}

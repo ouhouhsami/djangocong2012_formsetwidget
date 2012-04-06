@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block extra-js %}
+	<script src="//maps.googleapis.com/maps/api/js?sensor=false&libraries=drawing" type="text/javascript"></script>
+	<script type="text/javascript">             
+		var map;
+		var markers = []; // used to hold all marker instances
+		$(document).ready(function() {
+			/*
+			* (Google) Map instantiation
+			*/
+			// map options
+			var myOptions = {
+				zoom: 8,
+				center: new google.maps.LatLng(-34.397, 150.644),
+				mapTypeId: google.maps.MapTypeId.ROADMAP,
+				streetViewControl:false,
+				mapTypeControl:false
+			};
+			// map instanciation
+			map = new google.maps.Map(document.getElementById('map_canvas'), myOptions); 
+			// map drawing manager
+			var drawingManager = new google.maps.drawing.DrawingManager({
+				drawingMode: google.maps.drawing.OverlayType.MARKER,
+				drawingControl: false, // use custom button
+				drawingControlOptions: {
+					position: google.maps.ControlPosition.TOP_CENTER,
+					drawingModes: [
+					google.maps.drawing.OverlayType.MARKER,
+					]
+				},
+				markerOptions: {
+					draggable: true,
+					icon:"{{ STATIC_URL}}img/blue-dot.png"
+				}
+			});
+			drawingManager.setMap(map);
+			// for better application design/ergonomy
+			$('#add_marker').click(function(event){
+				$(this).button('toggle');
+				drawingManager.setDrawingMode(google.maps.drawing.OverlayType.MARKER)
+				return false;
+			})
+			$('#browser_the_map').click(function(event){
+				$(this).button('toggle');
+				drawingManager.setDrawingMode(null)
+				return false;
+			})
+			
+			// add marker
+			google.maps.event.addListener(drawingManager, 'markercomplete', function(event) {
+				markers.push(event)
+				for(i in markers){
+					markers[i].setIcon("{{ STATIC_URL}}img/red-dot.png")
+				}
+				event.setIcon("{{ STATIC_URL}}img/blue-dot.png")
+				var form_target = add_form();
+				// remove all alert-info class
+				$('*').removeClass('alert-info');
+				// add alert-info class to the created form
+				form_target.addClass('alert-info');
+				var position = event.getPosition().toString();
+				$(form_target).find('.marker').val(position);
+				// used to link marker to a form
+				$(form_target).find('.marker').data('marker', event);
+				addEventsToMarker($(form_target).find('.marker').get(0), event)	
+			});
+			
+			// instanciate marker on map for each form of the formset 
+			$('.marker').each(function(){
+				var re = /\((.*),\s(.*)\)/;
+				var m = re.exec($(this).val());
+				var lat = parseFloat(m[1]);
+				var lng = parseFloat(m[2]);
+				// create marker
+				var marker = new google.maps.Marker({
+					position: new google.maps.LatLng(lat,lng),
+					map: map,
+					draggable: true,
+					icon:"{{ STATIC_URL}}img/red-dot.png",
+				});
+				// ref marker inside field position in form
+				$(this).data('marker', marker);
+				addEventsToMarker(this, marker);
+			})
+			
+			// close functionnality
+			$('.close').live('click', function(event){
+				// check delete box
+				$(this).parent().find("*[name$='DELETE']").attr('checked', true);
+				// remove marker from map
+				$(this).parent().find('.marker').data('marker').setMap(null)
+				// "hide form", not remove form ! formset would be unconsistant
+				$(this).parent().hide();
+			})
+			$('.formset_form_container')
+			.live('mouseover', function(event){
+				// change current form style
+				$(this).addClass('alert-info');
+				var current_maker = $(this).find('.marker').data('marker');
+				// show marker linked to form on map
+				current_maker.setIcon('{{ STATIC_URL}}img/blue-dot.png');
+				// center map
+				map.setCenter(current_maker.getPosition())
+			})
+			.live('mouseout', function(event){
+				$(this).removeClass('alert-info');
+				var current_maker = $(this).find('.marker').data('marker');
+				current_maker.setIcon('{{ STATIC_URL}}img/red-dot.png');
+			})
+		});
+		/* dynamically add form to formset */
+		var total_form_count = {{ formset.total_form_count }};
+		var initial_form_count = {{ formset.initial_form_count }};
+		var form = "<div class='formset_form_container well  form-inline'>"+
+						"<a class='close'>×</a>"+
+						'{{ formset.empty_form.id }} {{ formset.empty_form.title }} {{ formset.empty_form.comment }} {{ formset.empty_form.position }}'+
+						'<span style="display:none">{{ formset.empty_form.DELETE }}</span>'+
+					"</div>";
+		add_form = function(){
+			var current_form = form.replace(/__prefix__/g, total_form_count);
+			total_form_count += 1;
+			$('form').find('*[name$="TOTAL_FORMS"]').val(total_form_count);
+			var ref = $(current_form).prependTo($('.formset_container'));
+			return ref.last();
+		}
+		// events: update value when marker dragend/mouser(over|out)
+		addEventsToMarker = function(field, marker){
+			var self = field;
+			google.maps.event.addListener(marker, 'dragend', function(event){
+				$(self).val(event.latLng.toString());
+			})
+			google.maps.event.addListener(marker, 'mouseover', function(event){
+				$(self).parent('.formset_form_container').addClass('alert-info');
+				this.setIcon("{{ STATIC_URL}}img/blue-dot.png");
+			})
+			google.maps.event.addListener(marker, 'mouseout', function(event){
+				$(self).parent('.formset_form_container').removeClass('alert-info');
+				this.setIcon("{{ STATIC_URL}}img/red-dot.png");
+			})
+		}
+	</script>
+{% endblock %}
+
+{% block content %}
+	<section>
+		<form method="post" action="">
+					{% csrf_token %}
+					{{ form }} 
+					<!-- form actions button : add marker and submit -->
+					<div class="form-actions">
+						<div class="span5">
+						<div class="btn-group" data-toggle="buttons-radio">
+							<a class="btn active" id="add_marker">Add Marker</a>
+							<a class="btn" id="browser_the_map">Update Markers / Browse Map</a>
+						</div>
+						</div>
+						<input style="float:right" class="btn btn-primary" type="submit" value="Save">
+					</div>
+			<div class="row">
+				<div class="span6">
+					<div>
+					<div id="map_canvas" style="width:100%; height:500px"></div>
+					</div>
+				</div>
+				<div class="span6 formset_container" >
+					<!-- formset part -->
+					{{ formset.management_form }}
+					{% for form in formset %}
+					{% comment %}set form_id to div below, even if it has got an error.{% endcomment %}
+					<div class='formset_form_container well form-inline {% if form.errors %}alert-error{% endif %}'>
+						<a class='close'>×</a> {{ form.errors }}
+						{{ form.id }} {{ form.title }} {{ form.comment }} {{ form.position }}
+						<span style='display:none'>{{ form.DELETE }}</span>
+					</div>
+					{% endfor %}
+				</div>
+			</div>
+		</form>
+	</section>
+{% endblock content %}
