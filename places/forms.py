@@ -8,6 +8,9 @@ class PlaceTypeForm(ModelForm):
     class Meta:
         model = PlaceType
         exclude = ('slug', )
+        widgets = {
+            'label':TextInput(attrs={'class':'input-medium search-query'})
+        }
 
 class PlaceForm(ModelForm):
     """

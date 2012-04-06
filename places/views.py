@@ -1,8 +1,9 @@
-from django.shortcuts import render_to_response
+from django.shortcuts import render_to_response, redirect
 from django.template import RequestContext
 from places.models import PlaceType, Place
 from places.forms import PlaceTypeForm, PlaceForm
 from django.forms.models import inlineformset_factory
+from django.template.defaultfilters import slugify
 
 def edit(request, placetype_slug):
     """
@@ -52,5 +53,14 @@ def list(request):
     List all PlaceTypes in the app
     """
     object_list = PlaceType.objects.all()
-    return render_to_response('places/list.html', {'object_list': object_list}, 
+    if request.method == "POST":
+        form = PlaceTypeForm(request.POST)
+        if form.is_valid():
+            label = form.cleaned_data['label']
+            slug = slugify(label)
+            place_type, created = PlaceType.objects.get_or_create(slug=slug,
+                                             defaults={'label':label})
+            return redirect('edit', placetype_slug=slug)
+    form = PlaceTypeForm()
+    return render_to_response('places/list.html', {'object_list': object_list, 'form':form}, 
                                       context_instance=RequestContext(request))

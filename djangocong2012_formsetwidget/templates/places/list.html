@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 
+
 {% block content %}
     <section>
-        <form class="well form-search">
-            <input type="text" class="input-medium search-query">
-            <button type="submit" class="btn">Create a new map</button>
+        <form class="well form-search" method="post" action=".">
+			{% csrf_token %}
+			{{ form.label }}
+            <button type="submit" class="btn create">Create a new map</button>
         </form>
 	</section>
     <section>
